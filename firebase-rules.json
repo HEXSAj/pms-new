@@ -64,6 +64,40 @@
           ".validate": false
         }
       }
+    },
+    "suppliers": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$supplierId": {
+        ".validate": "newData.hasChildren(['name', 'address', 'email', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('address').isString() && newData.child('address').val().length > 0 && newData.child('address').val().length <= 500 && newData.child('email').isString() && newData.child('email').val().length > 0 && newData.child('email').val().length <= 200 && newData.child('updatedAt').isString()",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "companyName": {
+          ".validate": "newData.isString() && newData.val().length <= 200 || newData.val() == null"
+        },
+        "phoneNumber": {
+          ".validate": "newData.isString() && newData.val().length <= 50 || newData.val() == null"
+        },
+        "address": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "note": {
+          ".validate": "newData.isString() && newData.val().length <= 1000 || newData.val() == null"
+        },
+        "createdAt": {
+          ".validate": "newData.isString() || !newData.exists()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

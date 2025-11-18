@@ -16,6 +16,7 @@ import {
   X,
   Search,
   Bell,
+  Building2,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -41,6 +42,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/' },
     { name: 'Inventory', icon: Package, href: '/inventory' },
+    { name: 'Suppliers', icon: Building2, href: '/suppliers' },
     { name: 'Projects', icon: Folder, href: '/projects' },
     { name: 'Tasks', icon: CheckSquare, href: '/tasks' },
     { name: 'Team', icon: Users, href: '/team' },
