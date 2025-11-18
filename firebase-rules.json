@@ -4,7 +4,7 @@
       ".read": "auth != null",
       ".write": "auth != null",
       "$itemId": {
-        ".validate": "newData.hasChildren(['tradeName', 'costPrice', 'sellingPrice', 'currentStock', 'discountPrevented', 'createdAt', 'updatedAt']) && newData.child('tradeName').isString() && newData.child('tradeName').val().length > 0 && newData.child('costPrice').isNumber() && newData.child('sellingPrice').isNumber() && newData.child('currentStock').isNumber() && newData.child('discountPrevented').isBoolean() && newData.child('createdAt').isString() && newData.child('updatedAt').isString()",
+        ".validate": "newData.hasChildren(['tradeName', 'costPrice', 'sellingPrice', 'currentStock', 'minimumStock', 'discountPrevented', 'createdAt', 'updatedAt']) && newData.child('tradeName').isString() && newData.child('tradeName').val().length > 0 && newData.child('costPrice').isNumber() && newData.child('sellingPrice').isNumber() && newData.child('currentStock').isNumber() && newData.child('minimumStock').isNumber() && newData.child('discountPrevented').isBoolean() && newData.child('createdAt').isString() && newData.child('updatedAt').isString()",
         "tradeName": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
         },
@@ -23,6 +23,12 @@
         "currentStock": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
+        "minimumStock": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "category": {
+          ".validate": "newData.isString() && newData.val().length <= 100 || newData.val() == null"
+        },
         "notes": {
           ".validate": "newData.isString() && newData.val().length <= 1000 || newData.val() == null"
         },
@@ -33,6 +39,25 @@
           ".validate": "newData.isString()"
         },
         "updatedAt": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "categories": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$categoryId": {
+        ".validate": "newData.hasChildren(['name', 'createdAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('createdAt').isString()",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "description": {
+          ".validate": "newData.isString() && newData.val().length <= 500 || newData.val() == null"
+        },
+        "createdAt": {
           ".validate": "newData.isString()"
         },
         "$other": {

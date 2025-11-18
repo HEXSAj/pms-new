@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, onValue, off } from 'firebase/database';
 import { database } from '@/lib/firebase';
+
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+}
 
 interface AddInventoryModalProps {
   isOpen: boolean;
@@ -17,16 +23,43 @@ export default function AddInventoryModal({
   onSuccess,
 }: AddInventoryModalProps) {
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [formData, setFormData] = useState({
     tradeName: '',
     genericName: '',
     costPrice: '',
     sellingPrice: '',
     currentStock: '',
+    minimumStock: '',
     brandName: '',
+    category: '',
     notes: '',
     discountPrevented: false,
   });
+
+  // Fetch categories from Firebase
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const categoriesRef = ref(database, 'categories');
+    
+    const unsubscribe = onValue(categoriesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const cats: Category[] = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setCategories(cats);
+      } else {
+        setCategories([]);
+      }
+    });
+
+    return () => {
+      off(categoriesRef);
+    };
+  }, [isOpen]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,7 +73,9 @@ export default function AddInventoryModal({
         costPrice: parseFloat(formData.costPrice) || 0,
         sellingPrice: parseFloat(formData.sellingPrice) || 0,
         currentStock: parseInt(formData.currentStock) || 0,
+        minimumStock: parseInt(formData.minimumStock) || 0,
         brandName: formData.brandName.trim() || null,
+        category: formData.category || null,
         notes: formData.notes.trim() || null,
         discountPrevented: formData.discountPrevented,
         createdAt: new Date().toISOString(),
@@ -59,7 +94,9 @@ export default function AddInventoryModal({
         costPrice: '',
         sellingPrice: '',
         currentStock: '',
+        minimumStock: '',
         brandName: '',
+        category: '',
         notes: '',
         discountPrevented: false,
       });
@@ -75,7 +112,7 @@ export default function AddInventoryModal({
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -167,6 +204,35 @@ export default function AddInventoryModal({
               />
             </div>
 
+            {/* Category */}
+            <div>
+              <label
+                htmlFor="category"
+                className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+              >
+                Category
+              </label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              {categories.length === 0 && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  No categories available. Please add a category first.
+                </p>
+              )}
+            </div>
+
             {/* Cost Price */}
             <div>
               <label
@@ -224,6 +290,27 @@ export default function AddInventoryModal({
                 id="currentStock"
                 name="currentStock"
                 value={formData.currentStock}
+                onChange={handleChange}
+                required
+                min="0"
+                placeholder="0"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
+              />
+            </div>
+
+            {/* Minimum Stock */}
+            <div>
+              <label
+                htmlFor="minimumStock"
+                className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+              >
+                Minimum Stock Level <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="minimumStock"
+                name="minimumStock"
+                value={formData.minimumStock}
                 onChange={handleChange}
                 required
                 min="0"

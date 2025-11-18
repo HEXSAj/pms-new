@@ -6,6 +6,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import AddInventoryModal from '@/components/AddInventoryModal';
+import AddCategoryModal from '@/components/AddCategoryModal';
 import {
   Plus,
   Package,
@@ -15,9 +16,16 @@ import {
   Search,
   Edit,
   Trash2,
+  Tag,
 } from 'lucide-react';
 import { ref, onValue, off } from 'firebase/database';
 import { database } from '@/lib/firebase';
+
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+}
 
 interface InventoryItem {
   id: string;
@@ -26,7 +34,9 @@ interface InventoryItem {
   costPrice: number;
   sellingPrice: number;
   currentStock: number;
+  minimumStock: number;
   brandName: string | null;
+  category: string | null;
   notes: string | null;
   discountPrevented: boolean;
   createdAt: string;
@@ -37,9 +47,12 @@ export default function InventoryPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -81,12 +94,43 @@ export default function InventoryPage() {
     };
   }, [user]);
 
+  // Fetch categories from Firebase
+  useEffect(() => {
+    if (!user) return;
+
+    const categoriesRef = ref(database, 'categories');
+    
+    const unsubscribe = onValue(categoriesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const cats: Category[] = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setCategories(cats);
+      } else {
+        setCategories([]);
+      }
+    });
+
+    return () => {
+      off(categoriesRef);
+    };
+  }, [user]);
+
   // Calculate stats
   const stats = {
     totalItems: inventoryItems.length,
-    lowStock: inventoryItems.filter((item) => item.currentStock > 0 && item.currentStock < 10).length,
+    lowStock: inventoryItems.filter((item) => item.currentStock > 0 && item.currentStock <= (item.minimumStock || 0)).length,
     inStock: inventoryItems.filter((item) => item.currentStock > 0).length,
     outOfStock: inventoryItems.filter((item) => item.currentStock === 0).length,
+  };
+
+  // Get category name by ID
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return '-';
+    const category = categories.find((cat) => cat.id === categoryId);
+    return category ? category.name : '-';
   };
 
   // Filter items
@@ -99,20 +143,23 @@ export default function InventoryPage() {
     const matchesStatus =
       statusFilter === '' ||
       (statusFilter === 'in-stock' && item.currentStock > 0) ||
-      (statusFilter === 'low-stock' && item.currentStock > 0 && item.currentStock < 10) ||
+      (statusFilter === 'low-stock' && item.currentStock > 0 && item.currentStock <= (item.minimumStock || 0)) ||
       (statusFilter === 'out-of-stock' && item.currentStock === 0);
 
-    return matchesSearch && matchesStatus;
+    const matchesCategory =
+      categoryFilter === '' || item.category === categoryFilter;
+
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const getStatusBadge = (stock: number) => {
+  const getStatusBadge = (stock: number, minimumStock: number) => {
     if (stock === 0) {
       return (
         <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
           Out of Stock
         </span>
       );
-    } else if (stock < 10) {
+    } else if (stock <= minimumStock) {
       return (
         <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
           Low Stock
@@ -152,13 +199,22 @@ export default function InventoryPage() {
               Manage your inventory items and stock levels
             </p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Add Medicine
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Tag className="w-5 h-5" />
+              Categories
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Add Medicine
+            </button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -235,12 +291,17 @@ export default function InventoryPage() {
                 />
               </div>
             </div>
-            <select className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            >
               <option value="">All Categories</option>
-              <option value="electronics">Electronics</option>
-              <option value="furniture">Furniture</option>
-              <option value="office">Office Supplies</option>
-              <option value="tools">Tools</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
             <select
               value={statusFilter}
@@ -271,7 +332,13 @@ export default function InventoryPage() {
                     Brand
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Stock
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Min. Stock
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Cost Price
@@ -290,7 +357,7 @@ export default function InventoryPage() {
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={10} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
                           <Package className="w-8 h-8 text-slate-400" />
@@ -336,8 +403,18 @@ export default function InventoryPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          {getCategoryName(item.category)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-slate-900 dark:text-white">
                           {item.currentStock}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          {item.minimumStock || 0}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -350,7 +427,7 @@ export default function InventoryPage() {
                           Rs {item.sellingPrice.toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(item.currentStock)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(item.currentStock, item.minimumStock || 0)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
                           <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
@@ -398,6 +475,15 @@ export default function InventoryPage() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={() => {
           // Data will be automatically updated via Firebase listener
+        }}
+      />
+
+      {/* Add Category Modal */}
+      <AddCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onSuccess={() => {
+          // Categories will be automatically updated via Firebase listener
         }}
       />
     </DashboardLayout>
