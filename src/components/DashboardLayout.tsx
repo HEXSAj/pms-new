@@ -5,6 +5,18 @@ import { signOut, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import {
+  LayoutDashboard,
+  Package,
+  Folder,
+  CheckSquare,
+  Users,
+  Settings,
+  Menu,
+  X,
+  Search,
+  Bell,
+} from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -27,12 +39,12 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
   };
 
   const menuItems = [
-    { name: 'Dashboard', icon: '📊', href: '/' },
-    { name: 'Inventory', icon: '📦', href: '/inventory' },
-    { name: 'Projects', icon: '📁', href: '/projects' },
-    { name: 'Tasks', icon: '✅', href: '/tasks' },
-    { name: 'Team', icon: '👥', href: '/team' },
-    { name: 'Settings', icon: '⚙️', href: '/settings' },
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/' },
+    { name: 'Inventory', icon: Package, href: '/inventory' },
+    { name: 'Projects', icon: Folder, href: '/projects' },
+    { name: 'Tasks', icon: CheckSquare, href: '/tasks' },
+    { name: 'Team', icon: Users, href: '/team' },
+    { name: 'Settings', icon: Settings, href: '/settings' },
   ];
 
   return (
@@ -60,19 +72,11 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
-            <svg
-              className="w-5 h-5 text-slate-600 dark:text-slate-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d={sidebarOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'}
-              />
-            </svg>
+            {sidebarOpen ? (
+              <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+            ) : (
+              <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+            )}
           </button>
         </div>
 
@@ -80,6 +84,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
         <nav className="p-4 space-y-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
+            const IconComponent = item.icon;
             return (
               <Link
                 key={item.name}
@@ -91,7 +96,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
+                <IconComponent className="w-5 h-5" />
                 {sidebarOpen && <span className="font-medium">{item.name}</span>}
               </Link>
             );
@@ -131,37 +136,13 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
-            <svg
-              className="w-6 h-6 text-slate-600 dark:text-slate-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            <Menu className="w-6 h-6 text-slate-600 dark:text-slate-400" />
           </button>
 
           <div className="flex-1 flex items-center justify-end gap-4">
             {/* Search */}
             <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg">
-              <svg
-                className="w-5 h-5 text-slate-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <Search className="w-5 h-5 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search..."
@@ -171,19 +152,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
 
             {/* Notifications */}
             <button className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors relative">
-              <svg
-                className="w-6 h-6 text-slate-600 dark:text-slate-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
+              <Bell className="w-6 h-6 text-slate-600 dark:text-slate-400" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
 

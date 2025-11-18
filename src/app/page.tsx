@@ -5,6 +5,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
+import { Folder, CheckSquare, Users, Target } from 'lucide-react';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -60,7 +61,7 @@ export default function Home() {
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">📁</span>
+                <Folder className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </div>
@@ -72,7 +73,7 @@ export default function Home() {
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">✅</span>
+                <CheckSquare className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </div>
@@ -84,7 +85,7 @@ export default function Home() {
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">👥</span>
+                <Users className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
           </div>
@@ -96,7 +97,7 @@ export default function Home() {
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
               </div>
               <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🎯</span>
+                <Target className="w-6 h-6 text-orange-600 dark:text-orange-400" />
               </div>
             </div>
           </div>
