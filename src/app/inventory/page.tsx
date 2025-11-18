@@ -342,12 +342,12 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-slate-600 dark:text-slate-400">
-                          ${item.costPrice.toFixed(2)}
+                          Rs {item.costPrice.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-slate-900 dark:text-white">
-                          ${item.sellingPrice.toFixed(2)}
+                          Rs {item.sellingPrice.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(item.currentStock)}</td>
