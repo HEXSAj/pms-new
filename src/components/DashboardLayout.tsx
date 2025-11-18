@@ -28,6 +28,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
 
   const menuItems = [
     { name: 'Dashboard', icon: '📊', href: '/' },
+    { name: 'Inventory', icon: '📦', href: '/inventory' },
     { name: 'Projects', icon: '📁', href: '/projects' },
     { name: 'Tasks', icon: '✅', href: '/tasks' },
     { name: 'Team', icon: '👥', href: '/team' },
