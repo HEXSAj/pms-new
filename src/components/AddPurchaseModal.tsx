@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Search } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Search, Calendar } from 'lucide-react';
 import { ref, push, set, onValue, off } from 'firebase/database';
 import { database } from '@/lib/firebase';
 
@@ -17,13 +17,17 @@ interface InventoryItem {
   genericName: string | null;
 }
 
+interface BatchEntry {
+  quantity: string;
+  expiryDate: string;
+}
+
 interface PurchaseItem {
   itemId: string;
   itemName: string;
-  quantity: string;
   costPrice: string;
   sellingPrice: string;
-  expiryDate: string;
+  batches: BatchEntry[];
 }
 
 interface AddPurchaseModalProps {
@@ -126,10 +130,9 @@ export default function AddPurchaseModal({
     const newItem: PurchaseItem = {
       itemId: item.id,
       itemName: item.tradeName,
-      quantity: '',
       costPrice: '',
       sellingPrice: '',
-      expiryDate: '',
+      batches: [{ quantity: '', expiryDate: '' }], // Start with one batch entry
     };
     setPurchaseItems([...purchaseItems, newItem]);
     setItemSearchQuery('');
@@ -146,6 +149,28 @@ export default function AddPurchaseModal({
     setPurchaseItems(updated);
   };
 
+  const handleAddBatch = (itemIndex: number) => {
+    const updated = [...purchaseItems];
+    updated[itemIndex].batches.push({ quantity: '', expiryDate: '' });
+    setPurchaseItems(updated);
+  };
+
+  const handleRemoveBatch = (itemIndex: number, batchIndex: number) => {
+    const updated = [...purchaseItems];
+    if (updated[itemIndex].batches.length > 1) {
+      updated[itemIndex].batches.splice(batchIndex, 1);
+      setPurchaseItems(updated);
+    } else {
+      alert('Each item must have at least one batch entry.');
+    }
+  };
+
+  const handleBatchChange = (itemIndex: number, batchIndex: number, field: keyof BatchEntry, value: string) => {
+    const updated = [...purchaseItems];
+    updated[itemIndex].batches[batchIndex][field] = value;
+    setPurchaseItems(updated);
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -159,17 +184,12 @@ export default function AddPurchaseModal({
       return;
     }
 
-    // Validate all items
+    // Validate all items and batches
     for (let i = 0; i < purchaseItems.length; i++) {
       const item = purchaseItems[i];
-      const quantity = parseFloat(item.quantity);
       const costPrice = parseFloat(item.costPrice);
       const sellingPrice = parseFloat(item.sellingPrice);
       
-      if (!item.quantity || isNaN(quantity) || quantity <= 0) {
-        alert(`Please enter a valid quantity for ${item.itemName}`);
-        return;
-      }
       if (!item.costPrice || isNaN(costPrice) || costPrice < 0) {
         alert(`Please enter a valid cost price for ${item.itemName}`);
         return;
@@ -178,9 +198,25 @@ export default function AddPurchaseModal({
         alert(`Please enter a valid selling price for ${item.itemName}`);
         return;
       }
-      if (!item.expiryDate) {
-        alert(`Please enter an expiry date for ${item.itemName}`);
+
+      // Validate all batches for this item
+      if (!item.batches || item.batches.length === 0) {
+        alert(`Please add at least one batch entry for ${item.itemName}`);
         return;
+      }
+
+      for (let j = 0; j < item.batches.length; j++) {
+        const batch = item.batches[j];
+        const quantity = parseFloat(batch.quantity);
+        
+        if (!batch.quantity || isNaN(quantity) || quantity <= 0) {
+          alert(`Please enter a valid quantity for batch ${j + 1} of ${item.itemName}`);
+          return;
+        }
+        if (!batch.expiryDate) {
+          alert(`Please enter an expiry date for batch ${j + 1} of ${item.itemName}`);
+          return;
+        }
       }
     }
 
@@ -197,11 +233,20 @@ export default function AddPurchaseModal({
       const newPurchaseRef = push(purchaseRef);
       const purchaseId = newPurchaseRef.key!;
 
-      const totalQuantity = purchaseItems.reduce((sum, item) => sum + parseFloat(item.quantity) || 0, 0);
-      const totalCost = purchaseItems.reduce(
-        (sum, item) => sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.costPrice) || 0) * 100, // Store in cents
-        0
-      );
+      // Calculate total quantity and cost from all batches
+      const totalQuantity = purchaseItems.reduce((sum, item) => {
+        const itemTotal = item.batches.reduce((batchSum, batch) => 
+          batchSum + (parseFloat(batch.quantity) || 0), 0
+        );
+        return sum + itemTotal;
+      }, 0);
+
+      const totalCost = purchaseItems.reduce((sum, item) => {
+        const itemTotal = item.batches.reduce((batchSum, batch) => 
+          batchSum + (parseFloat(batch.quantity) || 0) * (parseFloat(item.costPrice) || 0) * 100, 0
+        );
+        return sum + itemTotal;
+      }, 0);
 
       const purchaseData = {
         supplierId: selectedSupplierId,
@@ -215,22 +260,26 @@ export default function AddPurchaseModal({
 
       await set(newPurchaseRef, purchaseData);
 
-      // Create batches for each item
-      const batchPromises = purchaseItems.map(async (item) => {
-        const batchRef = ref(database, 'batches');
-        const newBatchRef = push(batchRef);
-        
-        const batchData = {
-          itemId: item.itemId,
-          purchaseId: purchaseId,
-          quantity: parseFloat(item.quantity) || 0,
-          costPrice: Math.round((parseFloat(item.costPrice) || 0) * 100), // Store in cents
-          sellingPrice: Math.round((parseFloat(item.sellingPrice) || 0) * 100), // Store in cents
-          expiryDate: item.expiryDate,
-          createdAt: new Date().toISOString(),
-        };
+      // Create batches for each item and each batch entry
+      const batchPromises: Promise<void>[] = [];
+      
+      purchaseItems.forEach((item) => {
+        item.batches.forEach((batch) => {
+          const batchRef = ref(database, 'batches');
+          const newBatchRef = push(batchRef);
+          
+          const batchData = {
+            itemId: item.itemId,
+            purchaseId: purchaseId,
+            quantity: parseFloat(batch.quantity) || 0,
+            costPrice: Math.round((parseFloat(item.costPrice) || 0) * 100), // Store in cents
+            sellingPrice: Math.round((parseFloat(item.sellingPrice) || 0) * 100), // Store in cents
+            expiryDate: batch.expiryDate,
+            createdAt: new Date().toISOString(),
+          };
 
-        await set(newBatchRef, batchData);
+          batchPromises.push(set(newBatchRef, batchData));
+        });
       });
 
       await Promise.all(batchPromises);
@@ -448,22 +497,8 @@ export default function AddPurchaseModal({
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                            Quantity <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              handleItemChange(index, 'quantity', e.target.value)
-                            }
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
-                          />
-                        </div>
+                      {/* Cost and Selling Price (shared for all batches) */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                             Cost Price (Rs) <span className="text-red-500">*</span>
@@ -477,6 +512,7 @@ export default function AddPurchaseModal({
                               handleItemChange(index, 'costPrice', e.target.value)
                             }
                             required
+                            placeholder="0.00"
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
                           />
                         </div>
@@ -493,22 +529,86 @@ export default function AddPurchaseModal({
                               handleItemChange(index, 'sellingPrice', e.target.value)
                             }
                             required
+                            placeholder="0.00"
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                            Expiry Date <span className="text-red-500">*</span>
+                      </div>
+
+                      {/* Batches Section */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                            Batches (Quantity & Expiry Date) <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="date"
-                            value={item.expiryDate}
-                            onChange={(e) =>
-                              handleItemChange(index, 'expiryDate', e.target.value)
-                            }
-                            required
-                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
-                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddBatch(index)}
+                            className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Add Batch
+                          </button>
+                        </div>
+                        
+                        {item.batches.map((batch, batchIndex) => (
+                          <div
+                            key={batchIndex}
+                            className="flex items-start gap-2 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600"
+                          >
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                  Quantity <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={batch.quantity}
+                                  onChange={(e) =>
+                                    handleBatchChange(index, batchIndex, 'quantity', e.target.value)
+                                  }
+                                  required
+                                  placeholder="0"
+                                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                                  Expiry Date <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                  <input
+                                    type="date"
+                                    value={batch.expiryDate}
+                                    onChange={(e) =>
+                                      handleBatchChange(index, batchIndex, 'expiryDate', e.target.value)
+                                    }
+                                    required
+                                    className="w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            {item.batches.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBatch(index, batchIndex)}
+                                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors mt-6"
+                                title="Remove batch"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        
+                        {/* Total Quantity Display */}
+                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                          Total Quantity: <span className="font-medium text-slate-900 dark:text-white">
+                            {item.batches.reduce((sum, batch) => sum + (parseFloat(batch.quantity) || 0), 0)}
+                          </span>
                         </div>
                       </div>
                     </div>
