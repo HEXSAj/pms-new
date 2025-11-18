@@ -27,8 +27,8 @@ interface Supplier {
   name: string;
   companyName: string | null;
   phoneNumber: string | null;
-  address: string;
-  email: string;
+  address: string | null;
+  email: string | null;
   note: string | null;
   createdAt: string;
   updatedAt: string;

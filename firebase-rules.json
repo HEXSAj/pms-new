@@ -69,7 +69,7 @@
       ".read": "auth != null",
       ".write": "auth != null",
       "$supplierId": {
-        ".validate": "newData.hasChildren(['name', 'address', 'email', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('address').isString() && newData.child('address').val().length > 0 && newData.child('address').val().length <= 500 && newData.child('email').isString() && newData.child('email').val().length > 0 && newData.child('email').val().length <= 200 && newData.child('updatedAt').isString()",
+        ".validate": "newData.hasChildren(['name', 'updatedAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('updatedAt').isString()",
         "name": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
         },
@@ -80,10 +80,10 @@
           ".validate": "newData.isString() && newData.val().length <= 50 || newData.val() == null"
         },
         "address": {
-          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+          ".validate": "newData.isString() && newData.val().length <= 500 || newData.val() == null"
         },
         "email": {
-          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+          ".validate": "newData.isString() && newData.val().length <= 200 || newData.val() == null"
         },
         "note": {
           ".validate": "newData.isString() && newData.val().length <= 1000 || newData.val() == null"

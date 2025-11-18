@@ -10,8 +10,8 @@ interface Supplier {
   name: string;
   companyName: string | null;
   phoneNumber: string | null;
-  address: string;
-  email: string;
+  address: string | null;
+  email: string | null;
   note: string | null;
   createdAt: string;
   updatedAt: string;
@@ -76,8 +76,8 @@ export default function SupplierModal({
         name: formData.name.trim(),
         companyName: formData.companyName.trim() || null,
         phoneNumber: formData.phoneNumber.trim() || null,
-        address: formData.address.trim(),
-        email: formData.email.trim(),
+        address: formData.address.trim() || null,
+        email: formData.email.trim() || null,
         note: formData.note.trim() || null,
         updatedAt: new Date().toISOString(),
       };
@@ -210,7 +210,7 @@ export default function SupplierModal({
                   htmlFor="email"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
                 >
-                  Email <span className="text-red-500">*</span>
+                  Email
                 </label>
                 <input
                   type="email"
@@ -218,8 +218,7 @@ export default function SupplierModal({
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  required
-                  placeholder="Enter email address"
+                  placeholder="Enter email address (optional)"
                   className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
                 />
               </div>
@@ -230,7 +229,7 @@ export default function SupplierModal({
                   htmlFor="address"
                   className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
                 >
-                  Address <span className="text-red-500">*</span>
+                  Address
                 </label>
                 <input
                   type="text"
@@ -238,8 +237,7 @@ export default function SupplierModal({
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
-                  required
-                  placeholder="Enter address"
+                  placeholder="Enter address (optional)"
                   className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
                 />
               </div>
