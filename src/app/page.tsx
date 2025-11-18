@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import DashboardLayout from '@/components/DashboardLayout';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -26,15 +26,6 @@ export default function Home() {
     }
   }, [loading, user, router]);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -48,41 +39,80 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <header className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
-                Welcome, {user.email}
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400 mt-1">
-                You are successfully logged in
-              </p>
+    <DashboardLayout user={user}>
+      <div className="space-y-6">
+        {/* Welcome Section */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">
+            Welcome back, {user.email?.split('@')[0]}!
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400">
+            Here's what's happening with your projects today.
+          </p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Projects</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">📁</span>
+              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
-            >
-              Sign Out
-            </button>
           </div>
-        </header>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Active Tasks</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">✅</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Team Members</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">👥</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Completed</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
+              </div>
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">🎯</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Main Content */}
-        <main className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 sm:p-8">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white mb-4">
-              Dashboard
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400">
-              Your application is ready. You can now start building your features with Firebase
-              Realtime Database and Authentication.
-            </p>
-          </div>
-        </main>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">
+            Dashboard Overview
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            Your application is ready. You can now start building your features with Firebase
+            Realtime Database and Authentication.
+          </p>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
