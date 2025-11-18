@@ -6,6 +6,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import AddInventoryModal from '@/components/AddInventoryModal';
+import EditInventoryModal from '@/components/EditInventoryModal';
 import AddCategoryModal from '@/components/AddCategoryModal';
 import {
   Plus,
@@ -49,7 +50,9 @@ export default function InventoryPage() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -430,10 +433,17 @@ export default function InventoryPage() {
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(item.currentStock, item.minimumStock || 0)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
-                          <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                          <button
+                            onClick={() => {
+                              setSelectedItem(item);
+                              setIsEditModalOpen(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Edit item"
+                          >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                          <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete item">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -476,6 +486,20 @@ export default function InventoryPage() {
         onSuccess={() => {
           // Data will be automatically updated via Firebase listener
         }}
+      />
+
+      {/* Edit Inventory Modal */}
+      <EditInventoryModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedItem(null);
+        }}
+        onSuccess={() => {
+          // Data will be automatically updated via Firebase listener
+          setSelectedItem(null);
+        }}
+        item={selectedItem}
       />
 
       {/* Add Category Modal */}
