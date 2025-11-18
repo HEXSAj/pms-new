@@ -21,7 +21,7 @@ import {
   Tag,
   Eye,
 } from 'lucide-react';
-import { ref, onValue, off } from 'firebase/database';
+import { ref, onValue, off, remove } from 'firebase/database';
 import { database } from '@/lib/firebase';
 
 interface Category {
@@ -219,6 +219,61 @@ export default function InventoryPage() {
           In Stock
         </span>
       );
+    }
+  };
+
+  const handleDelete = async (item: InventoryItem) => {
+    const stock = getStockFromBatches(item.id);
+    const confirmMessage = stock > 0
+      ? `Are you sure you want to delete "${item.tradeName}"? This will also delete ${stock} units of stock across all batches. This action cannot be undone.`
+      : `Are you sure you want to delete "${item.tradeName}"? This action cannot be undone.`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      // First, get all batches for this item and delete them
+      const batchesRef = ref(database, 'batches');
+      
+      // Get batches snapshot once
+      const batchesSnapshot = await new Promise<any>((resolve, reject) => {
+        const unsubscribe = onValue(
+          batchesRef,
+          (snapshot) => {
+            unsubscribe();
+            resolve(snapshot.val());
+          },
+          (error) => {
+            unsubscribe();
+            reject(error);
+          }
+        );
+      });
+
+      if (batchesSnapshot) {
+        // Find all batches for this item
+        const batchIds = Object.keys(batchesSnapshot).filter(
+          (batchId) => batchesSnapshot[batchId].itemId === item.id
+        );
+
+        // Delete all batches in parallel
+        if (batchIds.length > 0) {
+          const batchDeletes = batchIds.map((batchId) => {
+            const batchRef = ref(database, `batches/${batchId}`);
+            return remove(batchRef);
+          });
+
+          await Promise.all(batchDeletes);
+        }
+      }
+
+      // Then delete the inventory item
+      const itemRef = ref(database, `inventory/${item.id}`);
+      await remove(itemRef);
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      alert('Failed to delete inventory item. Please try again.');
     }
   };
 
@@ -498,7 +553,11 @@ export default function InventoryPage() {
                           >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Delete item">
+                          <button
+                            onClick={() => handleDelete(item)}
+                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            title="Delete item"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
