@@ -21,7 +21,7 @@ import {
   Tag,
   Eye,
 } from 'lucide-react';
-import { ref, onValue, off, remove } from 'firebase/database';
+import { ref, onValue, off, remove, get } from 'firebase/database';
 import { database } from '@/lib/firebase';
 
 interface Category {
@@ -236,25 +236,14 @@ export default function InventoryPage() {
       // First, get all batches for this item and delete them
       const batchesRef = ref(database, 'batches');
       
-      // Get batches snapshot once
-      const batchesSnapshot = await new Promise<any>((resolve, reject) => {
-        const unsubscribe = onValue(
-          batchesRef,
-          (snapshot) => {
-            unsubscribe();
-            resolve(snapshot.val());
-          },
-          (error) => {
-            unsubscribe();
-            reject(error);
-          }
-        );
-      });
+      // Get batches snapshot once using get() for one-time read
+      const batchesSnapshot = await get(batchesRef);
+      const batchesData = batchesSnapshot.val();
 
-      if (batchesSnapshot) {
+      if (batchesData) {
         // Find all batches for this item
-        const batchIds = Object.keys(batchesSnapshot).filter(
-          (batchId) => batchesSnapshot[batchId].itemId === item.id
+        const batchIds = Object.keys(batchesData).filter(
+          (batchId) => batchesData[batchId].itemId === item.id
         );
 
         // Delete all batches in parallel
