@@ -20,6 +20,12 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -38,7 +44,6 @@ export default function Home() {
   }
 
   if (!user) {
-    router.push('/login');
     return null;
   }
 
