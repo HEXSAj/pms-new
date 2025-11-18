@@ -4,7 +4,6 @@ import { useState, FormEvent } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -141,8 +140,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
+            {/* Remember Me */}
+            <div>
               <label className="flex items-center">
                 <input
                   type="checkbox"
@@ -152,12 +151,6 @@ export default function LoginPage() {
                   Remember me
                 </span>
               </label>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-              >
-                Forgot password?
-              </Link>
             </div>
 
             {/* Submit Button */}
