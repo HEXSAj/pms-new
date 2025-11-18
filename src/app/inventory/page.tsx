@@ -5,6 +5,7 @@ import { auth } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
+import AddInventoryModal from '@/components/AddInventoryModal';
 import {
   Plus,
   Package,
@@ -12,11 +13,33 @@ import {
   CheckCircle,
   XCircle,
   Search,
+  Edit,
+  Trash2,
 } from 'lucide-react';
+import { ref, onValue, off } from 'firebase/database';
+import { database } from '@/lib/firebase';
+
+interface InventoryItem {
+  id: string;
+  tradeName: string;
+  genericName: string | null;
+  costPrice: number;
+  sellingPrice: number;
+  currentStock: number;
+  brandName: string | null;
+  notes: string | null;
+  discountPrevented: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function InventoryPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -33,6 +56,76 @@ export default function InventoryPage() {
       router.push('/login');
     }
   }, [loading, user, router]);
+
+  // Fetch inventory items from Firebase
+  useEffect(() => {
+    if (!user) return;
+
+    const inventoryRef = ref(database, 'inventory');
+    
+    const unsubscribe = onValue(inventoryRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const items: InventoryItem[] = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setInventoryItems(items);
+      } else {
+        setInventoryItems([]);
+      }
+    });
+
+    return () => {
+      off(inventoryRef);
+    };
+  }, [user]);
+
+  // Calculate stats
+  const stats = {
+    totalItems: inventoryItems.length,
+    lowStock: inventoryItems.filter((item) => item.currentStock > 0 && item.currentStock < 10).length,
+    inStock: inventoryItems.filter((item) => item.currentStock > 0).length,
+    outOfStock: inventoryItems.filter((item) => item.currentStock === 0).length,
+  };
+
+  // Filter items
+  const filteredItems = inventoryItems.filter((item) => {
+    const matchesSearch =
+      item.tradeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.genericName && item.genericName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.brandName && item.brandName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesStatus =
+      statusFilter === '' ||
+      (statusFilter === 'in-stock' && item.currentStock > 0) ||
+      (statusFilter === 'low-stock' && item.currentStock > 0 && item.currentStock < 10) ||
+      (statusFilter === 'out-of-stock' && item.currentStock === 0);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusBadge = (stock: number) => {
+    if (stock === 0) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+          Out of Stock
+        </span>
+      );
+    } else if (stock < 10) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+          Low Stock
+        </span>
+      );
+    } else {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+          In Stock
+        </span>
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -59,9 +152,12 @@ export default function InventoryPage() {
               Manage your inventory items and stock levels
             </p>
           </div>
-          <button className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+          >
             <Plus className="w-5 h-5" />
-            Add Item
+            Add Medicine
           </button>
         </div>
 
@@ -71,7 +167,9 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Items</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">0</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  {stats.totalItems}
+                </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
                 <Package className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -83,7 +181,9 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Low Stock</p>
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">0</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+                  {stats.lowStock}
+                </p>
               </div>
               <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
@@ -95,7 +195,9 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">In Stock</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">0</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                  {stats.inStock}
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                 <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -107,7 +209,9 @@ export default function InventoryPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Out of Stock</p>
-                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">0</p>
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
+                  {stats.outOfStock}
+                </p>
               </div>
               <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
                 <XCircle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
@@ -124,7 +228,9 @@ export default function InventoryPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search inventory items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by trade name, generic, or brand..."
                   className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
                 />
               </div>
@@ -136,7 +242,11 @@ export default function InventoryPage() {
               <option value="office">Office Supplies</option>
               <option value="tools">Tools</option>
             </select>
-            <select className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            >
               <option value="">All Status</option>
               <option value="in-stock">In Stock</option>
               <option value="low-stock">Low Stock</option>
@@ -152,16 +262,22 @@ export default function InventoryPage() {
               <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Item Name
+                    Trade Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Category
+                    Generic Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    SKU
+                    Brand
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Quantity
+                    Stock
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Cost Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Selling Price
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Status
@@ -172,25 +288,82 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {/* Empty State */}
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
-                        <Package className="w-8 h-8 text-slate-400" />
+                {filteredItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                          <Package className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400 font-medium">
+                          No inventory items found
+                        </p>
+                        <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
+                          {inventoryItems.length === 0
+                            ? 'Get started by adding your first medicine'
+                            : 'Try adjusting your search or filters'}
+                        </p>
+                        {inventoryItems.length === 0 && (
+                          <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            Add Medicine
+                          </button>
+                        )}
                       </div>
-                      <p className="text-slate-600 dark:text-slate-400 font-medium">
-                        No inventory items found
-                      </p>
-                      <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
-                        Get started by adding your first inventory item
-                      </p>
-                      <button className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-                        Add Item
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredItems.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">
+                          {item.tradeName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          {item.genericName || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          {item.brandName || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">
+                          {item.currentStock}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-slate-600 dark:text-slate-400">
+                          ${item.costPrice.toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">
+                          ${item.sellingPrice.toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(item.currentStock)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -199,8 +372,8 @@ export default function InventoryPage() {
         {/* Pagination */}
         <div className="flex items-center justify-between bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700">
           <div className="text-sm text-slate-600 dark:text-slate-400">
-            Showing <span className="font-medium">0</span> to <span className="font-medium">0</span> of{' '}
-            <span className="font-medium">0</span> results
+            Showing <span className="font-medium">{filteredItems.length}</span> of{' '}
+            <span className="font-medium">{inventoryItems.length}</span> results
           </div>
           <div className="flex gap-2">
             <button
@@ -218,6 +391,15 @@ export default function InventoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Inventory Modal */}
+      <AddInventoryModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          // Data will be automatically updated via Firebase listener
+        }}
+      />
     </DashboardLayout>
   );
 }

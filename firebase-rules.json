@@ -1,0 +1,45 @@
+{
+  "rules": {
+    "inventory": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$itemId": {
+        ".validate": "newData.hasChildren(['tradeName', 'costPrice', 'sellingPrice', 'currentStock', 'discountPrevented', 'createdAt', 'updatedAt']) && newData.child('tradeName').isString() && newData.child('tradeName').val().length > 0 && newData.child('costPrice').isNumber() && newData.child('sellingPrice').isNumber() && newData.child('currentStock').isNumber() && newData.child('discountPrevented').isBoolean() && newData.child('createdAt').isString() && newData.child('updatedAt').isString()",
+        "tradeName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "genericName": {
+          ".validate": "newData.isString() && newData.val().length <= 200 || newData.val() == null"
+        },
+        "brandName": {
+          ".validate": "newData.isString() && newData.val().length <= 200 || newData.val() == null"
+        },
+        "costPrice": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "sellingPrice": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "currentStock": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "notes": {
+          ".validate": "newData.isString() && newData.val().length <= 1000 || newData.val() == null"
+        },
+        "discountPrevented": {
+          ".validate": "newData.isBoolean()"
+        },
+        "createdAt": {
+          ".validate": "newData.isString()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}
+
