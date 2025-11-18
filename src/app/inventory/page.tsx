@@ -8,6 +8,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import AddInventoryModal from '@/components/AddInventoryModal';
 import EditInventoryModal from '@/components/EditInventoryModal';
 import AddCategoryModal from '@/components/AddCategoryModal';
+import ViewBatchesModal from '@/components/ViewBatchesModal';
 import {
   Plus,
   Package,
@@ -18,6 +19,7 @@ import {
   Edit,
   Trash2,
   Tag,
+  Eye,
 } from 'lucide-react';
 import { ref, onValue, off } from 'firebase/database';
 import { database } from '@/lib/firebase';
@@ -52,7 +54,9 @@ export default function InventoryPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isBatchesModalOpen, setIsBatchesModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [batches, setBatches] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -121,12 +125,52 @@ export default function InventoryPage() {
     };
   }, [user]);
 
-  // Calculate stats
+  // Fetch batches and calculate stock for each item
+  useEffect(() => {
+    if (!user) return;
+
+    const batchesRef = ref(database, 'batches');
+    
+    const unsubscribe = onValue(batchesRef, (snapshot) => {
+      const data = snapshot.val();
+      const stockByItem: Record<string, number> = {};
+      
+      if (data) {
+        Object.keys(data).forEach((key) => {
+          const batch = data[key];
+          const itemId = batch.itemId;
+          const quantity = batch.quantity || 0;
+          
+          if (stockByItem[itemId]) {
+            stockByItem[itemId] += quantity;
+          } else {
+            stockByItem[itemId] = quantity;
+          }
+        });
+      }
+      
+      setBatches(stockByItem);
+    });
+
+    return () => {
+      off(batchesRef);
+    };
+  }, [user]);
+
+  // Get stock from batches for an item
+  const getStockFromBatches = (itemId: string): number => {
+    return batches[itemId] || 0;
+  };
+
+  // Calculate stats based on batches
   const stats = {
     totalItems: inventoryItems.length,
-    lowStock: inventoryItems.filter((item) => item.currentStock > 0 && item.currentStock <= (item.minimumStock || 0)).length,
-    inStock: inventoryItems.filter((item) => item.currentStock > 0).length,
-    outOfStock: inventoryItems.filter((item) => item.currentStock === 0).length,
+    lowStock: inventoryItems.filter((item) => {
+      const stock = getStockFromBatches(item.id);
+      return stock > 0 && stock <= (item.minimumStock || 0);
+    }).length,
+    inStock: inventoryItems.filter((item) => getStockFromBatches(item.id) > 0).length,
+    outOfStock: inventoryItems.filter((item) => getStockFromBatches(item.id) === 0).length,
   };
 
   // Get category name by ID
@@ -143,11 +187,12 @@ export default function InventoryPage() {
       (item.genericName && item.genericName.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.brandName && item.brandName.toLowerCase().includes(searchQuery.toLowerCase()));
 
+    const stock = getStockFromBatches(item.id);
     const matchesStatus =
       statusFilter === '' ||
-      (statusFilter === 'in-stock' && item.currentStock > 0) ||
-      (statusFilter === 'low-stock' && item.currentStock > 0 && item.currentStock <= (item.minimumStock || 0)) ||
-      (statusFilter === 'out-of-stock' && item.currentStock === 0);
+      (statusFilter === 'in-stock' && stock > 0) ||
+      (statusFilter === 'low-stock' && stock > 0 && stock <= (item.minimumStock || 0)) ||
+      (statusFilter === 'out-of-stock' && stock === 0);
 
     const matchesCategory =
       categoryFilter === '' || item.category === categoryFilter;
@@ -412,7 +457,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-slate-900 dark:text-white">
-                          {item.currentStock}
+                          {getStockFromBatches(item.id)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -430,9 +475,19 @@ export default function InventoryPage() {
                           Rs {item.sellingPrice.toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(item.currentStock, item.minimumStock || 0)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(getStockFromBatches(item.id), item.minimumStock || 0)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedItem(item);
+                              setIsBatchesModalOpen(true);
+                            }}
+                            className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                            title="View batches"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => {
                               setSelectedItem(item);
@@ -510,6 +565,19 @@ export default function InventoryPage() {
           // Categories will be automatically updated via Firebase listener
         }}
       />
+
+      {/* View Batches Modal */}
+      {selectedItem && (
+        <ViewBatchesModal
+          isOpen={isBatchesModalOpen}
+          onClose={() => {
+            setIsBatchesModalOpen(false);
+            setSelectedItem(null);
+          }}
+          itemId={selectedItem.id}
+          itemName={selectedItem.tradeName}
+        />
+      )}
     </DashboardLayout>
   );
 }

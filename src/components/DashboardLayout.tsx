@@ -17,6 +17,7 @@ import {
   Search,
   Bell,
   Building2,
+  ShoppingCart,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -43,6 +44,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     { name: 'Dashboard', icon: LayoutDashboard, href: '/' },
     { name: 'Inventory', icon: Package, href: '/inventory' },
     { name: 'Suppliers', icon: Building2, href: '/suppliers' },
+    { name: 'Purchasing', icon: ShoppingCart, href: '/purchasing' },
     { name: 'Projects', icon: Folder, href: '/projects' },
     { name: 'Tasks', icon: CheckSquare, href: '/tasks' },
     { name: 'Team', icon: Users, href: '/team' },

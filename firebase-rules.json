@@ -98,6 +98,68 @@
           ".validate": false
         }
       }
+    },
+    "purchases": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$purchaseId": {
+        ".validate": "newData.hasChildren(['supplierId', 'supplierName', 'purchaseDate', 'totalItems', 'totalQuantity', 'totalCost', 'createdAt']) && newData.child('supplierId').isString() && newData.child('supplierName').isString() && newData.child('purchaseDate').isString() && newData.child('totalItems').isNumber() && newData.child('totalQuantity').isNumber() && newData.child('totalCost').isNumber() && newData.child('createdAt').isString()",
+        "supplierId": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "supplierName": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "purchaseDate": {
+          ".validate": "newData.isString()"
+        },
+        "totalItems": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "totalQuantity": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "totalCost": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "createdAt": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "batches": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$batchId": {
+        ".validate": "newData.hasChildren(['itemId', 'purchaseId', 'quantity', 'costPrice', 'sellingPrice', 'expiryDate', 'createdAt']) && newData.child('itemId').isString() && newData.child('purchaseId').isString() && newData.child('quantity').isNumber() && newData.child('costPrice').isNumber() && newData.child('sellingPrice').isNumber() && newData.child('expiryDate').isString() && newData.child('createdAt').isString()",
+        "itemId": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "purchaseId": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "quantity": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "costPrice": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "sellingPrice": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "expiryDate": {
+          ".validate": "newData.isString()"
+        },
+        "createdAt": {
+          ".validate": "newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }
