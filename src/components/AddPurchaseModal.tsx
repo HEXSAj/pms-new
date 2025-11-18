@@ -20,9 +20,9 @@ interface InventoryItem {
 interface PurchaseItem {
   itemId: string;
   itemName: string;
-  quantity: number;
-  costPrice: number;
-  sellingPrice: number;
+  quantity: string;
+  costPrice: string;
+  sellingPrice: string;
   expiryDate: string;
 }
 
@@ -45,6 +45,8 @@ export default function AddPurchaseModal({
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [itemSearchQuery, setItemSearchQuery] = useState('');
   const [showItemSearch, setShowItemSearch] = useState(false);
+  const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
+  const [showSupplierSearch, setShowSupplierSearch] = useState(false);
 
   // Fetch suppliers
   useEffect(() => {
@@ -104,6 +106,16 @@ export default function AddPurchaseModal({
     );
   });
 
+  // Filter suppliers for search
+  const filteredSuppliers = suppliers.filter((supplier) => {
+    if (!supplierSearchQuery) return true;
+    const query = supplierSearchQuery.toLowerCase();
+    return (
+      supplier.name.toLowerCase().includes(query) ||
+      (supplier.companyName && supplier.companyName.toLowerCase().includes(query))
+    );
+  });
+
   const handleAddItem = (item: InventoryItem) => {
     // Check if item already added
     if (purchaseItems.some((pi) => pi.itemId === item.id)) {
@@ -114,9 +126,9 @@ export default function AddPurchaseModal({
     const newItem: PurchaseItem = {
       itemId: item.id,
       itemName: item.tradeName,
-      quantity: 1,
-      costPrice: 0,
-      sellingPrice: 0,
+      quantity: '',
+      costPrice: '',
+      sellingPrice: '',
       expiryDate: '',
     };
     setPurchaseItems([...purchaseItems, newItem]);
@@ -128,7 +140,7 @@ export default function AddPurchaseModal({
     setPurchaseItems(purchaseItems.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index: number, field: keyof PurchaseItem, value: string | number) => {
+  const handleItemChange = (index: number, field: keyof PurchaseItem, value: string) => {
     const updated = [...purchaseItems];
     updated[index] = { ...updated[index], [field]: value };
     setPurchaseItems(updated);
@@ -150,15 +162,19 @@ export default function AddPurchaseModal({
     // Validate all items
     for (let i = 0; i < purchaseItems.length; i++) {
       const item = purchaseItems[i];
-      if (item.quantity <= 0) {
+      const quantity = parseFloat(item.quantity);
+      const costPrice = parseFloat(item.costPrice);
+      const sellingPrice = parseFloat(item.sellingPrice);
+      
+      if (!item.quantity || isNaN(quantity) || quantity <= 0) {
         alert(`Please enter a valid quantity for ${item.itemName}`);
         return;
       }
-      if (item.costPrice < 0) {
+      if (!item.costPrice || isNaN(costPrice) || costPrice < 0) {
         alert(`Please enter a valid cost price for ${item.itemName}`);
         return;
       }
-      if (item.sellingPrice < 0) {
+      if (!item.sellingPrice || isNaN(sellingPrice) || sellingPrice < 0) {
         alert(`Please enter a valid selling price for ${item.itemName}`);
         return;
       }
@@ -181,9 +197,9 @@ export default function AddPurchaseModal({
       const newPurchaseRef = push(purchaseRef);
       const purchaseId = newPurchaseRef.key!;
 
-      const totalQuantity = purchaseItems.reduce((sum, item) => sum + item.quantity, 0);
+      const totalQuantity = purchaseItems.reduce((sum, item) => sum + parseFloat(item.quantity) || 0, 0);
       const totalCost = purchaseItems.reduce(
-        (sum, item) => sum + item.quantity * item.costPrice * 100, // Store in cents
+        (sum, item) => sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.costPrice) || 0) * 100, // Store in cents
         0
       );
 
@@ -207,9 +223,9 @@ export default function AddPurchaseModal({
         const batchData = {
           itemId: item.itemId,
           purchaseId: purchaseId,
-          quantity: item.quantity,
-          costPrice: Math.round(item.costPrice * 100), // Store in cents
-          sellingPrice: Math.round(item.sellingPrice * 100), // Store in cents
+          quantity: parseFloat(item.quantity) || 0,
+          costPrice: Math.round((parseFloat(item.costPrice) || 0) * 100), // Store in cents
+          sellingPrice: Math.round((parseFloat(item.sellingPrice) || 0) * 100), // Store in cents
           expiryDate: item.expiryDate,
           createdAt: new Date().toISOString(),
         };
@@ -225,6 +241,8 @@ export default function AddPurchaseModal({
       setPurchaseItems([]);
       setItemSearchQuery('');
       setShowItemSearch(false);
+      setSupplierSearchQuery('');
+      setShowSupplierSearch(false);
 
       onSuccess();
       onClose();
@@ -266,20 +284,75 @@ export default function AddPurchaseModal({
                 >
                   Supplier <span className="text-red-500">*</span>
                 </label>
-                <select
-                  id="supplier"
-                  value={selectedSupplierId}
-                  onChange={(e) => setSelectedSupplierId(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                >
-                  <option value="">Select a supplier</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.companyName || supplier.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={supplierSearchQuery}
+                    onChange={(e) => {
+                      setSupplierSearchQuery(e.target.value);
+                      setShowSupplierSearch(true);
+                    }}
+                    onFocus={() => {
+                      if (!selectedSupplierId) {
+                        setShowSupplierSearch(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Delay to allow click on dropdown item
+                      setTimeout(() => setShowSupplierSearch(false), 200);
+                    }}
+                    placeholder="Search supplier by name or company..."
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
+                  />
+                  {selectedSupplierId && (
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                        Selected: <span className="font-medium text-slate-900 dark:text-white">
+                          {suppliers.find(s => s.id === selectedSupplierId)?.name}
+                          {suppliers.find(s => s.id === selectedSupplierId)?.companyName && 
+                            ` - ${suppliers.find(s => s.id === selectedSupplierId)?.companyName}`
+                          }
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSupplierId('');
+                          setSupplierSearchQuery('');
+                        }}
+                        className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                  {showSupplierSearch && filteredSuppliers.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredSuppliers.map((supplier) => (
+                        <button
+                          key={supplier.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSupplierId(supplier.id);
+                            setSupplierSearchQuery('');
+                            setShowSupplierSearch(false);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                        >
+                          <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            {supplier.name}
+                          </div>
+                          {supplier.companyName && (
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              {supplier.companyName}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -385,7 +458,7 @@ export default function AddPurchaseModal({
                             min="1"
                             value={item.quantity}
                             onChange={(e) =>
-                              handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)
+                              handleItemChange(index, 'quantity', e.target.value)
                             }
                             required
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
@@ -401,7 +474,7 @@ export default function AddPurchaseModal({
                             min="0"
                             value={item.costPrice}
                             onChange={(e) =>
-                              handleItemChange(index, 'costPrice', parseFloat(e.target.value) || 0)
+                              handleItemChange(index, 'costPrice', e.target.value)
                             }
                             required
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
@@ -417,7 +490,7 @@ export default function AddPurchaseModal({
                             min="0"
                             value={item.sellingPrice}
                             onChange={(e) =>
-                              handleItemChange(index, 'sellingPrice', parseFloat(e.target.value) || 0)
+                              handleItemChange(index, 'sellingPrice', e.target.value)
                             }
                             required
                             className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm"
