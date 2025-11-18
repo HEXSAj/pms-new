@@ -12,8 +12,9 @@ interface Batch {
   quantity: number;
   costPrice: number; // in cents
   sellingPrice: number; // in cents
-  expiryDate: string;
+  expiryDate: string | null;
   createdAt: string;
+  isInitialStock?: boolean;
 }
 
 interface ViewBatchesModalProps {
@@ -76,10 +77,12 @@ export default function ViewBatchesModal({
   // Check for expired batches
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const expiredBatches = batches.filter(
-    (batch) => new Date(batch.expiryDate) < today
-  );
+  const expiredBatches = batches.filter((batch) => {
+    if (!batch.expiryDate) return false;
+    return new Date(batch.expiryDate) < today;
+  });
   const expiringSoonBatches = batches.filter((batch) => {
+    if (!batch.expiryDate) return false;
     const expiryDate = new Date(batch.expiryDate);
     const daysUntilExpiry = Math.ceil(
       (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
@@ -195,26 +198,34 @@ export default function ViewBatchesModal({
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                   {batches.map((batch) => {
-                    const expiryDate = new Date(batch.expiryDate);
+                    const isInitialStock = batch.isInitialStock || batch.purchaseId === 'initial_stock';
+                    const hasExpiryDate = batch.expiryDate && batch.expiryDate !== null;
+                    const expiryDate = hasExpiryDate ? new Date(batch.expiryDate) : null;
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    const isExpired = expiryDate < today;
-                    const daysUntilExpiry = Math.ceil(
+                    const isExpired = expiryDate ? expiryDate < today : false;
+                    const daysUntilExpiry = expiryDate ? Math.ceil(
                       (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-                    );
-                    const isExpiringSoon = !isExpired && daysUntilExpiry <= 30;
+                    ) : null;
+                    const isExpiringSoon = expiryDate && !isExpired && daysUntilExpiry !== null && daysUntilExpiry <= 30;
 
                     return (
                       <tr
                         key={batch.id}
                         className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${
                           isExpired ? 'bg-red-50 dark:bg-red-900/10' : ''
-                        } ${isExpiringSoon ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}`}
+                        } ${isExpiringSoon ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}
+                        ${isInitialStock ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
                       >
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm font-mono text-slate-900 dark:text-white">
                             {batch.id.substring(0, 8)}...
                           </div>
+                          {isInitialStock && (
+                            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium">
+                              Initial Stock
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm text-slate-900 dark:text-white">
@@ -232,13 +243,23 @@ export default function ViewBatchesModal({
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                            <Calendar className="w-4 h-4" />
-                            {expiryDate.toLocaleDateString()}
-                          </div>
+                          {hasExpiryDate && expiryDate ? (
+                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                              <Calendar className="w-4 h-4" />
+                              {expiryDate.toLocaleDateString()}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-slate-400 dark:text-slate-500 italic">
+                              No expiry date
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          {isExpired ? (
+                          {!hasExpiryDate ? (
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                              No Expiry
+                            </span>
+                          ) : isExpired ? (
                             <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
                               Expired
                             </span>

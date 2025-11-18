@@ -35,6 +35,7 @@ export default function AddInventoryModal({
     category: '',
     notes: '',
     discountPrevented: false,
+    expiryDate: '',
   });
 
   // Fetch categories from Firebase
@@ -85,7 +86,28 @@ export default function AddInventoryModal({
       // Save to Firebase Realtime Database
       const inventoryRef = ref(database, 'inventory');
       const newItemRef = push(inventoryRef);
+      const itemId = newItemRef.key!;
       await set(newItemRef, inventoryItem);
+
+      // Create batch if currentStock > 0
+      const stockQuantity = parseInt(formData.currentStock) || 0;
+      if (stockQuantity > 0) {
+        const batchRef = ref(database, 'batches');
+        const newBatchRef = push(batchRef);
+        
+        const batchData = {
+          itemId: itemId,
+          purchaseId: 'initial_stock', // Special identifier for initial stock batches
+          quantity: stockQuantity,
+          costPrice: Math.round((parseFloat(formData.costPrice) || 0) * 100), // Store in cents
+          sellingPrice: Math.round((parseFloat(formData.sellingPrice) || 0) * 100), // Store in cents
+          expiryDate: formData.expiryDate || null, // Optional expiry date
+          createdAt: new Date().toISOString(),
+          isInitialStock: true, // Flag to identify initial stock batches
+        };
+
+        await set(newBatchRef, batchData);
+      }
 
       // Reset form
       setFormData({
@@ -99,6 +121,7 @@ export default function AddInventoryModal({
         category: '',
         notes: '',
         discountPrevented: false,
+        expiryDate: '',
       });
 
       onSuccess();
@@ -296,7 +319,34 @@ export default function AddInventoryModal({
                 placeholder="0"
                 className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
               />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                A batch will be created automatically for this stock
+              </p>
             </div>
+
+            {/* Expiry Date for Initial Stock */}
+            {parseInt(formData.currentStock) > 0 && (
+              <div>
+                <label
+                  htmlFor="expiryDate"
+                  className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2"
+                >
+                  Expiry Date (for initial stock)
+                </label>
+                <input
+                  type="date"
+                  id="expiryDate"
+                  name="expiryDate"
+                  value={formData.expiryDate}
+                  onChange={handleChange}
+                  placeholder="Select expiry date (optional)"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Optional: Set expiry date for the initial stock batch
+                </p>
+              </div>
+            )}
 
             {/* Minimum Stock */}
             <div>

@@ -134,7 +134,7 @@
       ".read": "auth != null",
       ".write": "auth != null",
       "$batchId": {
-        ".validate": "newData.hasChildren(['itemId', 'purchaseId', 'quantity', 'costPrice', 'sellingPrice', 'expiryDate', 'createdAt']) && newData.child('itemId').isString() && newData.child('purchaseId').isString() && newData.child('quantity').isNumber() && newData.child('costPrice').isNumber() && newData.child('sellingPrice').isNumber() && newData.child('expiryDate').isString() && newData.child('createdAt').isString()",
+        ".validate": "newData.hasChildren(['itemId', 'purchaseId', 'quantity', 'costPrice', 'sellingPrice', 'createdAt']) && newData.child('itemId').isString() && newData.child('purchaseId').isString() && newData.child('quantity').isNumber() && newData.child('costPrice').isNumber() && newData.child('sellingPrice').isNumber() && newData.child('createdAt').isString()",
         "itemId": {
           ".validate": "newData.isString() && newData.val().length > 0"
         },
@@ -151,7 +151,10 @@
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
         "expiryDate": {
-          ".validate": "newData.isString()"
+          ".validate": "newData.isString() || newData.val() == null"
+        },
+        "isInitialStock": {
+          ".validate": "newData.isBoolean() || !newData.exists()"
         },
         "createdAt": {
           ".validate": "newData.isString()"
